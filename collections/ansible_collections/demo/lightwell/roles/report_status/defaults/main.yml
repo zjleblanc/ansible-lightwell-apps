@@ -1,6 +1,6 @@
 ---
 github_api_url: https://api.github.com
-github_status_context: "ci/lightwell-{{ app_type | default('python') }}-{{ app_environment }}"
+github_status_context: "ci/lightwell-java-{{ app_environment }}"
 
 # Base URL of the AAP controller UI, used to link GitHub statuses/PR
 # comments back to the job run (e.g. "https://controller.example.com").

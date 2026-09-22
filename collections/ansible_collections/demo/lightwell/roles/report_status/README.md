@@ -31,4 +31,4 @@ without failing the play.
 | Variable | Default | Description |
 | --- | --- | --- |
 | `github_api_url` | `https://api.github.com` | Override for GitHub Enterprise Server. |
-| `github_status_context` | `ci/lightwell-{{ app_type }}-{{ app_environment }}` | The status "context" shown in GitHub -- also the name to select as a required status check in branch protection. Scoped per `app_type` so each app gets its own independent check. |
+| `github_status_context` | `ci/lightwell-java-{{ app_environment }}` | The status "context" shown in GitHub -- also the name to select as a required status check in branch protection. |

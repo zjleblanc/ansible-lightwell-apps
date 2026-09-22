@@ -5,19 +5,15 @@ health_check_http_retries: 10
 health_check_http_delay: 5
 health_check_strict: true
 
-# Host port per (app_type, app_environment). Normally supplied by
+# Host port per app_environment. Normally supplied by
 # inventory/group_vars/all.yml; duplicated here as a fallback so this role
 # is self-contained when used outside this repository's inventory.
 app_port_map:
-  python:
-    dev: 8080
-    prod: 8081
-  java:
-    dev: 8082
-    prod: 8083
+  dev: 8082
+  prod: 8083
 
-# Derived from app_type and app_environment so this role is self-contained
-# when included on its own (e.g. from rollback), rather than relying on
+# Derived from app_environment so this role is self-contained when
+# included on its own (e.g. from rollback), rather than relying on
 # deploy_app having set these as role defaults earlier in the same play.
-app_container_name: "lightwell-{{ app_type | default('python') }}-demo{{ '-dev' if app_environment == 'dev' else '' }}"
-app_host_port: "{{ app_port_map[app_type | default('python')][app_environment] }}"
+app_container_name: "lightwell-java-demo{{ '-dev' if app_environment == 'dev' else '' }}"
+app_host_port: "{{ app_port_map[app_environment] }}"

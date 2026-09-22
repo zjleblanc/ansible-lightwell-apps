@@ -1,11 +1,8 @@
 # Lightwell Patch Pipeline Demo App -- Java
 
 A small Spring Boot dashboard used to demo the Lightwell + Ansible patch
-pipeline for `app_type: java`. This is one of potentially several
-`apps/<app_type>/` applications served by the same pipeline -- see the
-root [README.md](../../README.md#multiple-apps-one-pipeline) for how the
-`app_type` switch works across app types. It mirrors
-[`apps/python`](../python/README.md) route-for-route and pixel-for-pixel.
+pipeline. See the root [README.md](../../README.md) for how this app fits
+into the pipeline.
 
 - **SnakeYAML** loads `config/app_config.yaml` -- service metadata,
   tracked dependencies, and a patch timeline -- at startup.
@@ -15,8 +12,7 @@ root [README.md](../../README.md#multiple-apps-one-pipeline) for how the
   Renovate-driven version bump becomes visually obvious.
 - **org.json** serializes the `/healthz` and `/api/config` JSON responses.
 - **Prism.js** (client-side, loaded from a CDN) syntax-highlights
-  `pom.xml` for display on the dashboard -- the Java equivalent of the
-  Python app's server-side Pygments highlighting.
+  `pom.xml` for display on the dashboard.
 
 See the root [README.md](../../README.md) for the full patch pipeline
 story (Renovate, EDA, AAP) and [docs/aap-setup.md](../../docs/aap-setup.md)
@@ -44,7 +40,7 @@ apps/java/
 │   ├── templates/
 │   │   ├── base.html                    # Layout fragment (nav, footer, Prism.js)
 │   │   └── dashboard.html               # Dashboard content
-│   └── static/style.css                 # Dark Lightwell-themed CSS (identical to apps/python)
+│   └── static/style.css                 # Dark Lightwell-themed CSS
 └── src/test/java/com/lightwell/demo/
     └── LightwellDemoApplicationTests.java
 ```
@@ -59,9 +55,9 @@ apps/java/
 
 ## Tracked dependencies
 
-Lightwell currently remediates `org.json:json` for Java (mirroring
-PyYAML/Jinja2 for Python). All five tracked dependencies --
-`spring-core`, `json`, `spring-boot`, `thymeleaf`, `snakeyaml` -- are
+Lightwell currently remediates `org.json:json`. All five tracked
+dependencies -- `spring-core`, `json`, `spring-boot`, `thymeleaf`,
+`snakeyaml` -- are
 shown on the dashboard; only `json` is pinned to an explicit,
 Renovate-visible version in `pom.xml`, so it's the one that will carry
 the `.rhlw-0000X` suffix and the "Lightwell" badge once Renovate bumps it
@@ -99,8 +95,7 @@ mvn test
 ```
 
 `LightwellDemoApplicationTests` covers the dashboard returning 200,
-`/healthz` reporting `ok`, and `/api/config` returning service metadata --
-the same three cases as the Python app's `tests/test_app.py`.
+`/healthz` reporting `ok`, and `/api/config` returning service metadata.
 
 ## Container build
 

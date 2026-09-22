@@ -1,22 +1,17 @@
 ---
-# Host port per (app_type, app_environment). Normally supplied by
+# Host port per app_environment. Normally supplied by
 # inventory/group_vars/all.yml; duplicated here as a fallback so this role
 # is self-contained when used outside this repository's inventory.
 app_port_map:
-  python:
-    dev: 8080
-    prod: 8081
-  java:
-    dev: 8082
-    prod: 8083
+  dev: 8082
+  prod: 8083
 
-# Derived from app_type and app_environment so every app and environment
-# combination can be deployed to, and coexist on, the same host/group
-# (each gets its own container, port, and rollback state file). Prod keeps
-# the bare name; dev gets a "-dev" suffix.
-app_container_name: "lightwell-{{ app_type | default('python') }}-demo{{ '-dev' if app_environment == 'dev' else '' }}"
-app_host_port: "{{ app_port_map[app_type | default('python')][app_environment] }}"
-app_previous_image_file: "/opt/lightwell-demo/{{ app_type | default('python') }}/{{ app_environment }}/previous_image.txt"
+# Derived from app_environment so dev and prod can be deployed to, and
+# coexist on, the same host/group (each gets its own container, port, and
+# rollback state file). Prod keeps the bare name; dev gets a "-dev" suffix.
+app_container_name: "lightwell-java-demo{{ '-dev' if app_environment == 'dev' else '' }}"
+app_host_port: "{{ app_port_map[app_environment] }}"
+app_previous_image_file: "/opt/lightwell-demo/java/{{ app_environment }}/previous_image.txt"
 
 # Quadlet file name defaults to the container name, so the generated
 # systemd service is named "{{ app_container_name }}.service".
@@ -28,7 +23,7 @@ app_service_name: "{{ app_container_name }}"
 # that doesn't source this repo's group_vars), so it can't rely on that
 # role's defaults or inventory to supply these.
 app_image_registry: quay.io/zleblanc
-app_image_name: "lightwell-{{ app_type | default('python') }}-demo"
+app_image_name: lightwell-java-demo
 app_image_tag: "{{ app_git_sha | default('dev') }}"
 
 # Set to false to disable no_log on credential-writing tasks for troubleshooting.

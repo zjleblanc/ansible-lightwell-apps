@@ -9,14 +9,11 @@
         port: 5000
 
   rules:
-    # One rule per (event, app_type). Every matching GitHub event launches a
-    # job template per app type; playbooks/deploy.yml decides per-run
-    # whether that app's own apps/<app_type>/ files actually changed and
-    # skips (posting a "Skipped" status) if not. Adding a new app type is a
-    # copy of the two rules below for that event, with app_type/job
-    # template name changed to match.
+    # One rule per event. Every matching GitHub event launches the job
+    # template; playbooks/deploy.yml decides per-run whether apps/java/
+    # files actually changed and skips (posting a "Skipped" status) if not.
 
-    - name: Launch Python build & test on new or updated pull requests
+    - name: Launch build & test on new or updated pull requests
       condition: >-
         event.payload.pull_request is defined and
         event.payload.action in ["opened", "synchronize", "reopened"]
@@ -26,67 +23,30 @@
           organization: Autodotes
           job_args:
             extra_vars:
-              app_type: python
               app_environment: dev
               app_git_sha: "{{ event.payload.pull_request.head.sha }}"
               github_repo_full_name: "{{ event.payload.repository.full_name }}"
               github_pr_number: "{{ event.payload.pull_request.number }}"
             scm_branch: "{{ event.payload.pull_request.head.sha }}"
 
-    - name: Launch Java build & test on new or updated pull requests
-      condition: >-
-        event.payload.pull_request is defined and
-        event.payload.action in ["opened", "synchronize", "reopened"]
-      action:
-        run_job_template:
-          name: Lightwell // Build & Test
-          organization: Autodotes
-          job_args:
-            extra_vars:
-              app_type: java
-              app_environment: dev
-              app_git_sha: "{{ event.payload.pull_request.head.sha }}"
-              github_repo_full_name: "{{ event.payload.repository.full_name }}"
-              github_pr_number: "{{ event.payload.pull_request.number }}"
-            scm_branch: "{{ event.payload.pull_request.head.sha }}"
-
-    - name: Rebuild Python dev image on demo reset push
+    - name: Rebuild dev image on demo reset push
       condition: >-
         event.payload.ref is defined and
         event.payload.ref == "refs/heads/main" and
         event.payload.head_commit is defined and
-        event.payload.head_commit.message is match("(?i)reset python.*")
+        event.payload.head_commit.message is match("(?i)reset.*")
       action:
         run_job_template:
           name: Lightwell // Build & Test
           organization: Autodotes
           job_args:
             extra_vars:
-              app_type: python
               app_environment: dev
               app_git_sha: "{{ event.payload.after }}"
               github_repo_full_name: "{{ event.payload.repository.full_name }}"
             scm_branch: "{{ event.payload.after }}"
 
-    - name: Rebuild Java dev image on demo reset push
-      condition: >-
-        event.payload.ref is defined and
-        event.payload.ref == "refs/heads/main" and
-        event.payload.head_commit is defined and
-        event.payload.head_commit.message is match("(?i)reset java.*")
-      action:
-        run_job_template:
-          name: Lightwell // Build & Test
-          organization: Autodotes
-          job_args:
-            extra_vars:
-              app_type: java
-              app_environment: dev
-              app_git_sha: "{{ event.payload.after }}"
-              github_repo_full_name: "{{ event.payload.repository.full_name }}"
-            scm_branch: "{{ event.payload.after }}"
-
-    - name: Launch Python deploy to prod on pull request merge
+    - name: Launch deploy to prod on pull request merge
       condition: >-
         event.payload.ref is defined and
         event.payload.ref == "refs/heads/main" and
@@ -99,26 +59,6 @@
           organization: Autodotes
           job_args:
             extra_vars:
-              app_type: python
-              app_environment: prod
-              app_git_sha: "{{ event.payload.after }}"
-              github_repo_full_name: "{{ event.payload.repository.full_name }}"
-            scm_branch: "{{ event.payload.after }}"
-
-    - name: Launch Java deploy to prod on pull request merge
-      condition: >-
-        event.payload.ref is defined and
-        event.payload.ref == "refs/heads/main" and
-        (event.payload.deleted is not defined or event.payload.deleted == false) and
-        event.payload.head_commit.committer.username is defined and
-        event.payload.head_commit.committer.username == "web-flow"
-      action:
-        run_job_template:
-          name: Lightwell // Deploy Prod
-          organization: Autodotes
-          job_args:
-            extra_vars:
-              app_type: java
               app_environment: prod
               app_git_sha: "{{ event.payload.after }}"
               github_repo_full_name: "{{ event.payload.repository.full_name }}"

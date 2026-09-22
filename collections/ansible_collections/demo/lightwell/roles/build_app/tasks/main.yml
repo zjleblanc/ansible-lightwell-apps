@@ -36,7 +36,7 @@
         recursive: true
 
     - name: Write Lightwell Network credentials to the build context
-      ansible.builtin.include_tasks: "auth_{{ app_type | default('python') }}.yml"
+      ansible.builtin.include_tasks: auth_java.yml
 
     - name: Build the application container image
       register: build_result

@@ -6,8 +6,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 
 /**
  * Exposes the repo, deployed commit SHA, PR number, and environment to
- * every template -- the Java equivalent of the Python app's
- * inject_github_context() Flask context processor.
+ * every template.
  */
 @ControllerAdvice(annotations = Controller.class)
 public class TemplateContextAdvice {

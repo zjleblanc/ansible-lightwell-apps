@@ -73,7 +73,7 @@
     <!--
       Exposes this file itself as a classpath resource (alongside the
       normal src/main/resources), so the dashboard can read and display it
-      the same way apps/python reads its own requirements.txt at runtime.
+      at runtime.
     -->
     <resources>
       <resource>

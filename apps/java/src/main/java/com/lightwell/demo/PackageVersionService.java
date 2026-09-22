@@ -17,13 +17,11 @@ import com.lightwell.demo.model.TrackedDependency;
 /**
  * Reports installed versions of tracked dependencies, annotated with
  * Lightwell provenance (from the version string) and role metadata from
- * app_config.yaml -- the Java equivalent of the Python app's
- * get_package_versions().
+ * app_config.yaml.
  */
 @Service
 public class PackageVersionService {
 
-    // Order mirrors the Python dashboard's TRACKED_PACKAGES tuple.
     private static final List<String> TRACKED_PACKAGES =
             List.of("spring-core", "json", "spring-boot", "thymeleaf", "snakeyaml");
 

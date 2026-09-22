@@ -29,12 +29,3 @@ repos:
     hooks:
       - id: ansible-lint
         files: ^(playbooks/|collections/ansible_collections/demo/|inventory/).*\.(yml|yaml)$
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
-    hooks:
-      - id: ruff
-        args: ["--fix"]
-        files: ^apps/python/
-      - id: ruff-format
-        files: ^apps/python/

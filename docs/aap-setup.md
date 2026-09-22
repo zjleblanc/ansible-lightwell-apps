@@ -1,19 +1,17 @@
 # Ansible Automation Platform Setup Guide
 
 This guide walks through configuring Ansible Automation Platform (AAP) so
-that it builds, deploys, health-checks, and (if needed) rolls back each
-Lightwell demo application (one per `app_type`, e.g. `python`, `java`) in
-response to GitHub pull request and push events.
+that it builds, deploys, health-checks, and (if needed) rolls back the
+Lightwell demo Java application in response to GitHub pull request and
+push events.
 
 GitHub does not talk to job templates directly. Instead, all GitHub events
 land on a single **Event-Driven Ansible (EDA) Event Stream**, which
 forwards them to a **Rulebook Activation** that decides which job
-template(s) to launch and with which extra vars -- one launch per
-`app_type`, each carrying `app_type` as an extra var so the same pair of
-playbooks/roles handles every app. Status is reported back to GitHub
-using a token minted on demand from a **GitHub App** installation, via the
-`GitHub App Installation Access Token Lookup` credential -- no static
-GitHub PAT is stored anywhere in this pipeline.
+template(s) to launch and with which extra vars. Status is reported back
+to GitHub using a token minted on demand from a **GitHub App** installation,
+via the `GitHub App Installation Access Token Lookup` credential -- no
+static GitHub PAT is stored anywhere in this pipeline.
 
 ## Table of Contents
 
@@ -23,15 +21,14 @@ GitHub PAT is stored anywhere in this pipeline.
   - [Lightwell Network Service Account (custom credential type)](#lightwell-network-service-account-custom-credential-type)
   - [GitHub App and status-reporting credentials](#github-app-and-status-reporting-credentials)
   - [Machine Credential](#machine-credential)
-  - [Container Registry Credential (optional, per app type)](#container-registry-credential-optional-per-app-type)
+  - [Container Registry Credential (optional)](#container-registry-credential-optional)
   - [Controller API Credential (for the Rulebook Activation)](#controller-api-credential-for-the-rulebook-activation)
 - [Project](#project)
 - [Inventory](#inventory)
-- [Job Templates (one pair per app type)](#job-templates-one-pair-per-app-type)
-  - [Lightwell Python // Build & Test](#lightwell-python--build--test)
-  - [Lightwell Python // Deploy Prod](#lightwell-python--deploy-prod)
+- [Job Templates](#job-templates)
+  - [Lightwell // Build & Test](#lightwell--build--test)
+  - [Lightwell // Deploy Prod](#lightwell--deploy-prod)
   - [Lightwell Rollback (manual)](#lightwell-rollback-manual)
-  - [Adding the Java job templates](#adding-the-java-job-templates)
 - [Decision Environment](#decision-environment)
 - [Event Stream & Rulebook Activation](#event-stream--rulebook-activation)
   - [Event Stream credential](#event-stream-credential)
@@ -48,16 +45,12 @@ GitHub PAT is stored anywhere in this pipeline.
 flowchart LR
     GH["GitHub repo\nansible-lightwell"] -->|"pull_request / push webhook"| ES["EDA Event Stream\n(GitHub Event Stream credential)"]
     ES --> RA["Rulebook Activation\nrulebooks/lightwell_webhook.yml"]
-    RA -->|"run_job_template\napp_type: python"| JT1["Job Template:\nLightwell Python - Build & Test"]
-    RA -->|"run_job_template\napp_type: java"| JT1b["Job Template:\nLightwell Java - Build & Test"]
-    RA -->|"run_job_template\napp_type: python"| JT2["Job Template:\nLightwell Python - Deploy Prod"]
-    RA -->|"run_job_template\napp_type: java"| JT2b["Job Template:\nLightwell Java - Deploy Prod"]
+    RA -->|"run_job_template"| JT1["Job Template:\nLightwell // Build & Test"]
+    RA -->|"run_job_template"| JT2["Job Template:\nLightwell // Deploy Prod"]
     JT1 --> PB["playbooks/deploy.yml"]
-    JT1b --> PB
     JT2 --> PB
-    JT2b --> PB
     PB -->|"github_token"| GH
-    JT3["Job Template:\nLightwell - Rollback\n(manual, app_type prompted)"] --> PB3["playbooks/rollback.yml"]
+    JT3["Job Template:\nLightwell - Rollback\n(manual)"] --> PB3["playbooks/rollback.yml"]
 ```
 
 ## Prerequisites
@@ -65,22 +58,17 @@ flowchart LR
 - An AAP instance (2.5+) with Event-Driven Ansible enabled, reachable from
   GitHub with a valid TLS certificate on its Event Stream endpoint.
 - A single Podman-capable RHEL host reachable over SSH (inventory group
-  `rhlw`) that both builds every app's image and hosts all `dev`/`prod`
-  deployments. Each `(app_type, app_environment)` pair runs as its own
-  Quadlet-managed container on its own port on that same host, per
-  `app_port_map` in `inventory/group_vars/all.yml` (`8080`/`8081` for
-  Python `dev`/`prod`, `8082`/`8083` for Java `dev`/`prod`) so they don't
-  collide.
-- One container registry per app type that the AAP execution environment
-  can push to and the target host can pull from, named by convention
-  `lightwell-<type>-demo` (default in this repo:
-  `quay.io/lightwell-python-demo`, `quay.io/lightwell-java-demo`).
+  `rhlw`) that both builds the app's image and hosts all `dev`/`prod`
+  deployments. Each `app_environment` runs as its own Quadlet-managed
+  container on its own port on that same host, per `app_port_map` in
+  `inventory/group_vars/all.yml` (`8082`/`8083` for `dev`/`prod`) so they
+  don't collide.
+- A container registry that the AAP execution environment can push to and
+  the target host can pull from, named `lightwell-java-demo` (default in
+  this repo: `quay.io/lightwell-java-demo`).
 - A Lightwell Network service account (username in the form
   `<account-id>|<service-account-name>`, plus a token). **Never** commit
   these values to the repository -- store them only as an AAP credential.
-  The same account is shared across app types; only the credential format
-  written into the build context differs (see
-  `roles/build_app/tasks/auth_<app_type>.yml`).
 - A **GitHub App** installed on this repository (see
   [GitHub App and status-reporting credentials](#github-app-and-status-reporting-credentials))
   -- used instead of a personal access token so status-reporting
@@ -123,9 +111,8 @@ AAP has no built-in credential type for Lightwell, so define one:
 
 Then create a credential of this new type named `Lightwell Demo Service Account`
 and paste in the service account username and token you were issued. This
-one credential is attached to every app type's Build & Test job template
--- `build_app`'s `auth_{{ app_type }}.yml` task decides what file format
-(`.netrc` for Python, a Maven `settings.xml` for Java) to write it into.
+credential is attached to the Build & Test job template -- `build_app`'s
+`auth_java.yml` task writes it into a build-context Maven `settings.xml`.
 
 ### GitHub App and status-reporting credentials
 
@@ -190,11 +177,10 @@ Instead of a static GitHub PAT, this pipeline authenticates to GitHub as a
    AAP now resolves a fresh installation token from the GitHub App every
    time this credential is used, instead of storing a static secret.
 
-   Attach `Lightwell GitHub Status Reporter` to every app type's Build &
-   Test and Deploy Prod [job templates](#job-templates-one-pair-per-app-type)
-   -- `demo.lightwell.report_status` reads `github_token` from it to post
-   commit statuses back to GitHub. It's the same credential for every app
-   type, since it authenticates as the GitHub App, not per-app.
+   Attach `Lightwell GitHub Status Reporter` to both the Build & Test and
+   Deploy Prod [job templates](#job-templates) --
+   `demo.lightwell.report_status` reads `github_token` from it to post
+   commit statuses back to GitHub.
 
 5. **Set `aap_controller_url`** in `inventory/group_vars/all.yml` (or as an
    extra var) to this controller's base URL, e.g.
@@ -209,18 +195,15 @@ Instead of a static GitHub PAT, this pipeline authenticates to GitHub as a
 
 - Type: **Machine**
 - SSH credentials (or SSH key) AAP uses to reach the `rhlw` Podman host.
-  Shared across all app types since they deploy to the same host.
 
-### Container Registry Credential (optional, per app type)
+### Container Registry Credential (optional)
 
 - Type: **Container Registry**
-- Only needed if an app type's registry (e.g. `quay.io/lightwell-python-demo`)
+- Only needed if the registry (e.g. `quay.io/lightwell-java-demo`)
   requires authentication. Exposed as `registry_auth_file` (path to a
   podman/docker `auth.json`-format file) to the `demo.lightwell.build_app`
   role (for pushes) and the `demo.lightwell.deploy_app` role (for pulls on
-  the target hosts). Create one per app type if each registry has
-  different credentials, and attach the matching one to that app type's
-  job templates.
+  the target hosts).
 
 ### Controller API Credential (for the Rulebook Activation)
 
@@ -228,8 +211,7 @@ Instead of a static GitHub PAT, this pipeline authenticates to GitHub as a
 - A token credential the `run_job_template` action in the rulebook uses to
   call back into Controller and launch job templates. Attach it to the
   [Rulebook Activation](#rulebook-activation), not to the job templates
-  themselves. Shared across all app types since the rulebook itself
-  dispatches to every app type's job templates.
+  themselves.
 
 ## Project
 
@@ -248,12 +230,10 @@ Instead of a static GitHub PAT, this pipeline authenticates to GitHub as a
   resolved.
 - Update Revision on Launch: enabled
 
-One project serves every app type -- all `apps/<type>/` directories live
-in the same repository checkout. This same project (and checkout) also
-supplies the rulebook at `rulebooks/lightwell_webhook.yml` -- create a
-matching **EDA Project** under **Automation Decisions -> Projects**
-pointing at the same repository URL so the rulebook is available to
-Rulebook Activations.
+This same project (and checkout) also supplies the rulebook at
+`rulebooks/lightwell_webhook.yml` -- create a matching **EDA Project**
+under **Automation Decisions -> Projects** pointing at the same
+repository URL so the rulebook is available to Rulebook Activations.
 
 ## Inventory
 
@@ -263,24 +243,18 @@ Rulebook Activations.
 - Add a single `rhlw` group containing the Podman host -- mirror
   `inventory/hosts.yml` in this repo, or import it directly as a
   source-controlled inventory pointed at the same project. This one host
-  is used for building every app type's image and for all `dev`/`prod`
+  is used for building the app's image and for all `dev`/`prod`
   deployments.
 - Attach the [Machine Credential](#machine-credential) from above.
 
-## Job Templates (one pair per app type)
+## Job Templates
 
 Job templates are no longer launched by GitHub directly -- they're
 launched by the Rulebook Activation's `run_job_template` action (see
 [Event Stream & Rulebook Activation](#event-stream--rulebook-activation)),
 so **no webhook configuration is needed on the job templates themselves**.
 
-Each app type gets its own **Build & Test** and **Deploy Prod** job
-template, both running the same `playbooks/deploy.yml` -- only the
-template's name and its `app_type` extra var differ. This keeps app types
-independently schedulable/limitable in AAP (separate job history,
-concurrency, notifications) without any playbook duplication.
-
-### Lightwell Python // Build & Test
+### Lightwell // Build & Test
 
 | Field | Value |
 | --- | --- |
@@ -290,9 +264,9 @@ concurrency, notifications) without any playbook duplication.
 | Credentials | Lightwell Demo Service Account, Machine, Container Registry (if used), Lightwell GitHub Status Reporter |
 | Limit | `rhlw` |
 | Source Control Branch/Tag/Commit override | Prompt on launch -- for PR builds the rulebook supplies `scm_branch: pull/<number>/head`, the PR branch's actual head commit. (Do not use GitHub's `pull/<number>/merge` ref here -- it's a test-merge commit that GitHub computes asynchronously and can lag several commits behind after a push, so the build can silently check out stale code.) For [Demo Reset](#demo-reset) pushes the rulebook instead supplies `scm_branch: "{{ event.payload.after }}"` -- the exact push commit SHA, matching `app_git_sha` -- rather than the symbolic `main` branch, so the project sync can't resolve to a later commit that lands on `main` before the sync runs. |
-| Extra Variables | Prompt on launch (the rulebook supplies `app_type: python`, `app_environment: dev`, `app_git_sha`, `github_repo_full_name`, `github_pr_number`) |
+| Extra Variables | Prompt on launch (the rulebook supplies `app_environment: dev`, `app_git_sha`, `github_repo_full_name`, `github_pr_number`) |
 
-### Lightwell Python // Deploy Prod
+### Lightwell // Deploy Prod
 
 | Field | Value |
 | --- | --- |
@@ -302,7 +276,7 @@ concurrency, notifications) without any playbook duplication.
 | Credentials | Lightwell Demo Service Account, Machine, Container Registry (if used), Lightwell GitHub Status Reporter |
 | Source Control Branch/Tag/Commit override | Prompt on launch -- the rulebook supplies `scm_branch: "{{ event.payload.after }}"`, the exact merge commit SHA (matching `app_git_sha`), rather than the symbolic `main` branch, so the project checkout can't drift to a later commit that lands on `main` before the sync runs. This builds from the merge commit (not the PR's dev image) and gets a fresh project sync now that the project's own Update Revision on Launch is disabled |
 | Limit | `rhlw` |
-| Extra Variables | Prompt on launch (the rulebook supplies `app_type: python`, `app_environment: prod`, `app_git_sha`, `github_repo_full_name`) |
+| Extra Variables | Prompt on launch (the rulebook supplies `app_environment: prod`, `app_git_sha`, `github_repo_full_name`) |
 
 ### Lightwell Rollback (manual)
 
@@ -312,23 +286,10 @@ concurrency, notifications) without any playbook duplication.
 | Project | `ansible-lightwell` |
 | Playbook | `playbooks/rollback.yml` |
 | Credentials | Machine |
-| Extra Variables | `app_type` and `target_environment` both prompted on launch (`python`/`java` and `dev`/`prod`) |
+| Extra Variables | `target_environment` prompted on launch (`dev`/`prod`) |
 
-One shared template covers every app type -- `app_type` is just another
-prompted extra var. No webhook or Event Stream needed -- this template is
-for on-demand manual rollback.
-
-### Adding the Java job templates
-
-When `apps/java/` lands, create `Lightwell Java // Build & Test` and
-`Lightwell Java // Deploy Prod` as exact copies of the Python templates
-above, with `app_type: java` wherever the rulebook supplies extra vars,
-and pointing their Container Registry credential (if any) at
-`quay.io/lightwell-java-demo`. The corresponding rulebook rules already
-exist in `rulebooks/lightwell_webhook.yml` (see
-[Rulebook Activation](#rulebook-activation)) and reference these template
-names, so once the templates exist in AAP the pipeline is live for Java
-with no further rulebook changes.
+No webhook or Event Stream needed -- this template is for on-demand
+manual rollback.
 
 ## Decision Environment
 
@@ -342,7 +303,7 @@ with no further rulebook changes.
 ## Event Stream & Rulebook Activation
 
 This replaces per-job-template webhooks with a single, centrally managed
-entry point that fans out to every app type.
+entry point.
 
 ### Event Stream credential
 
@@ -398,13 +359,10 @@ See [Red Hat docs -- Creating an event stream][rh-es].
 - Decision environment: `lightwell-decision-environment`
 - Restart policy: `On failure`
 
-The rulebook contains one rule per `(event, app_type)` pair, so a single
-PR or push event triggers a `run_job_template` launch for every app type
-that has rules defined (currently Python; Java once its rules are added --
-see [Adding the Java job templates](#adding-the-java-job-templates)).
-Each launch's playbook independently decides whether its own `app_type`
-actually has file changes to build (see the root
-[README's path-based filtering section](../README.md#path-based-filtering-only-deploy-when-an-apps-own-files-change)).
+The rulebook contains one rule per event, so a single PR or push event
+triggers a single `run_job_template` launch. The playbook independently
+decides whether there are file changes to build (see the root
+[README's path-based filtering section](../README.md#path-based-filtering-only-deploy-when-app-files-change)).
 
 See [Red Hat docs -- Replacing sources and attaching event streams to activations][rh-es-attach].
 
@@ -418,8 +376,8 @@ In the GitHub repository: **Settings -> Webhooks -> Add webhook**
 - Secret: the same HMAC secret you generated for the `GitHub Event Stream`
   credential in [Event Stream credential](#event-stream-credential) above
 - Events: select **Pull requests** and **Pushes** (one webhook covers
-  both flows, for every app type -- the rulebook's conditions decide which
-  job templates to launch)
+  both flows -- the rulebook's conditions decide which job template to
+  launch)
 
 After adding the webhook, GitHub sends a test `ping` payload. Verify on
 the Event Stream's detail page in AAP that it was received (the *Events
@@ -440,81 +398,73 @@ and [Verifying your event streams work][rh-es-verify].
 - Require a pull request before merging
 - Require approvals (at least 1)
 - Require status checks to pass before merging -- select the
-  `ci/lightwell-python-dev` context (posted by
-  `demo.lightwell.report_status` from `playbooks/deploy.yml` with
-  `app_type: python`, using the token from the `Lightwell GitHub Status
-  Reporter` credential). Add `ci/lightwell-java-dev` here too once the
-  Java job templates exist, so merges require every active app type's
-  check to pass.
+  `ci/lightwell-java-dev` context (posted by
+  `demo.lightwell.report_status` from `playbooks/deploy.yml`, using the
+  token from the `Lightwell GitHub Status Reporter` credential).
 
 This is what enforces the "successful test leads to a PR to main with
 approval requirements" step of the pipeline.
 
 ## End-to-End Flow
 
-1. Renovate scans each app type's dependency manifest (e.g.
-   `apps/python/requirements.txt`) against its Lightwell Remediated index
-   and opens a PR bumping a remediated package to a `.rhlw-0000X` version.
+1. Renovate scans the app's dependency manifest (`apps/java/pom.xml`)
+   against its Lightwell Remediated index and opens a PR bumping a
+   remediated package to a `.rhlw-0000X` version.
 2. GitHub sends a `pull_request` webhook to the Event Stream, which
    forwards it to the `Lightwell Patch Pipeline Router` rulebook
    activation.
 3. The rulebook matches the `opened`/`synchronize`/`reopened` condition
-   and launches `Lightwell Python // Build & Test` (and `Lightwell Java //
-   Build & Test`, once it exists) with `app_git_sha`,
-   `github_repo_full_name`, and that rule's own `app_type` from the
-   payload/rule.
-4. `playbooks/deploy.yml` checks whether the PR actually touched that
-   `app_type`'s `apps/<type>/` files; if not, it posts a "Skipped" success
-   status and exits early. Otherwise it marks the `ci/lightwell-<type>-dev`
-   status `pending`, builds the image from the PR branch's head commit
+   and launches `Lightwell // Build & Test` with `app_git_sha`,
+   `github_repo_full_name`, and `github_pr_number` from the payload.
+4. `playbooks/deploy.yml` checks whether the PR actually touched
+   `apps/java/` files; if not, it posts a "Skipped" success status and
+   exits early. Otherwise it marks the `ci/lightwell-java-dev` status
+   `pending`, builds the image from the PR branch's head commit
    (`scm_branch: pull/<number>/head`), deploys/health-checks it in `dev`,
    then reports `success` or `failure` back to GitHub using the GitHub App
    installation token -- including a `target_url` pointing at the AAP job
    run, and a PR comment summarizing the result with a link to that same
    job run.
-5. Branch protection blocks merging until every required `ci/lightwell-
-   <type>-dev` check passes and a reviewer approves; a reviewer then
-   merges the PR into `main`.
+5. Branch protection blocks merging until the required `ci/lightwell-
+   java-dev` check passes and a reviewer approves; a reviewer then merges
+   the PR into `main`.
 6. GitHub sends a `push` webhook to the same Event Stream; the rulebook
-   matches the `refs/heads/main` condition and launches each app type's
-   `Lightwell <Type> // Deploy Prod` with the merge commit SHA.
-7. `playbooks/deploy.yml` again checks whether that `app_type`'s files
+   matches the `refs/heads/main` condition and launches `Lightwell //
+   Deploy Prod` with the merge commit SHA.
+7. `playbooks/deploy.yml` again checks whether `apps/java/` files
    actually changed in the merge commit; if so, it rebuilds the image from
    the merged `main` branch (rather than reusing the dev image), so the
    merge integrates cleanly with whatever else landed on `main`. The image
    is tagged with both the merge commit SHA and `latest`, and both tags
    are pushed. It then deploys the commit-SHA-tagged image to `prod`,
    health-checks it, and reports status back to GitHub (context
-   `ci/lightwell-<type>-prod`) the same way.
+   `ci/lightwell-java-prod`) the same way.
 8. If the prod health check fails, the playbook automatically rolls back
-   that app type to its previously running image, re-checks health, and
-   reports the final outcome -- surfacing as a failed AAP job for alerting
-   if the rollback itself doesn't come back healthy.
+   to the previously running image, re-checks health, and reports the
+   final outcome -- surfacing as a failed AAP job for alerting if the
+   rollback itself doesn't come back healthy.
 
 ## Demo Reset
 
-To re-run the demo, downgrade `Flask`, `PyYAML`, and `Jinja2` in
-`apps/python/requirements.txt` (e.g. `Flask==3.1.1`, `PyYAML==6.0.2`,
-`Jinja2==3.1.5`), delete Renovate's open branch for that update (its name
-starts with `renovate/python-`, per `additionalBranchPrefix` in
-`renovate.json` -- check the exact name on the open PR), and push to
-`main` with a commit message starting with `Reset`:
+To re-run the demo, downgrade the remediated package in
+`apps/java/pom.xml` (e.g. `org.json:json` to an earlier version), delete
+Renovate's open branch for that update (its name starts with
+`renovate/java-`, per `additionalBranchPrefix` in `renovate.json` -- check
+the exact name on the open PR), and push to `main` with a commit message
+starting with `Reset`:
 
 ```
-git push origin --delete renovate/python-<branch-suffix-from-the-open-pr>
+git push origin --delete renovate/java-<branch-suffix-from-the-open-pr>
 git commit -am "Reset demo dependencies"
 git push origin main
 ```
 
 This triggers two things:
 
-1. Each app type's `Rebuild <Type> dev image on demo reset push` rule
-   matches the `Reset` commit message and immediately rebuilds/redeploys
-   that app's `dev` environment from the exact push commit on `main`
-   (pinned via `scm_branch`, matching `app_git_sha`) -- no PR needed. Only
-   the Python job actually rebuilds anything today, since only
-   `apps/python/` has files to change; the Java launch skips via the same
-   path-filtering check once its job template exists.
-2. Renovate re-detects the downgraded packages and opens a new PR on its
+1. The `Rebuild dev image on demo reset push` rule matches the `Reset`
+   commit message and immediately rebuilds/redeploys the `dev`
+   environment from the exact push commit on `main` (pinned via
+   `scm_branch`, matching `app_git_sha`) -- no PR needed.
+2. Renovate re-detects the downgraded package and opens a new PR on its
    next scheduled run (`before 7am` America/Chicago per `renovate.json`),
    or trigger it manually if demoing outside that window.

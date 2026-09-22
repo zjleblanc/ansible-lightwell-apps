@@ -28,7 +28,7 @@ dependencies:
 patch_timeline:
   - date: "2026-09-11"
     version: "1.0.0"
-    event: Initial release of the Java dashboard, mirroring the Python demo.
+    event: Initial release of the Java dashboard.
   - date: "2026-09-11"
     version: "n/a"
     event: >-

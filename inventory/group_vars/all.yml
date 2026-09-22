@@ -1,22 +1,13 @@
 ---
-# app_type selects which apps/<type>/ application the pipeline builds and
-# deploys. Job templates/rulebook rules override this per app; it defaults
-# to python so ad-hoc/manual launches still work.
-app_type: python
-
 app_image_registry: quay.io/zleblanc
-app_image_name: "lightwell-{{ app_type }}-demo"
+app_image_name: lightwell-java-demo
 lightwell_registry_host: packages.redhat.com
 
-# Host port per (app_type, app_environment), so every app/environment
-# combination coexists on the same demo host without colliding.
+# Host port per app_environment, so dev and prod coexist on the same demo
+# host without colliding.
 app_port_map:
-  python:
-    dev: 8080
-    prod: 8081
-  java:
-    dev: 8082
-    prod: 8083
+  dev: 8082
+  prod: 8083
 
 # Fallback used only when a job template is launched manually (without the
 # EDA rulebook supplying github_repo_full_name from the webhook payload).

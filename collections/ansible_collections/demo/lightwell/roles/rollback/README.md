@@ -1,10 +1,10 @@
 # demo.lightwell.rollback
 
-Restores the previously running container image for a Lightwell demo
-application, using the image reference recorded by `deploy_app` at
+Restores the previously running container image for the Lightwell demo
+Java application, using the image reference recorded by `deploy_app` at
 `app_previous_image_file`. Re-runs the `health_check` role (non-strict)
 against the restored version so the outcome of the rollback itself is
-known. `app_type` selects which app to roll back.
+known.
 
 ## Required variables
 
@@ -16,11 +16,10 @@ known. `app_type` selects which app to roll back.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `app_type` | `python` | Selects which app to roll back. |
-| `app_port_map` | `{python: {dev: 8080, prod: 8081}, java: {dev: 8082, prod: 8083}}` | Host port lookup by `(app_type, app_environment)`. |
-| `app_container_name` | `lightwell-{{ app_type }}-demo` (`-dev` suffix for `dev`) | Name of the container and Quadlet unit to roll back. |
-| `app_host_port` | `app_port_map[app_type][app_environment]` | Host port mapped to the container's port 8080, derived from `app_type` and `app_environment`. |
-| `app_previous_image_file` | `/opt/lightwell-demo/{{ app_type }}/{{ app_environment }}/previous_image.txt` | Path written by `deploy_app` containing the last known-good image reference. |
+| `app_port_map` | `{dev: 8082, prod: 8083}` | Host port lookup by `app_environment`. |
+| `app_container_name` | `lightwell-java-demo` (`-dev` suffix for `dev`) | Name of the container and Quadlet unit to roll back. |
+| `app_host_port` | `app_port_map[app_environment]` | Host port mapped to the container's port 8080, derived from `app_environment`. |
+| `app_previous_image_file` | `/opt/lightwell-demo/java/{{ app_environment }}/previous_image.txt` | Path written by `deploy_app` containing the last known-good image reference. |
 | `quadlet_dir` | `/etc/containers/systemd` | Directory the Quadlet `.container` file is rewritten in. |
 | `app_service_name` | `{{ app_container_name }}` | Name of the systemd service restarted after the Quadlet unit is rewritten. |
 

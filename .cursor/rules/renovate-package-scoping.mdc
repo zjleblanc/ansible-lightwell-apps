@@ -6,60 +6,45 @@ alwaysApply: false
 
 # Scoping Renovate to Specific Packages
 
-This repo is a monorepo of multiple `apps/<app_type>/` applications (e.g.
-`apps/python/`, `apps/java/`), each pinning dependencies against the private
-Lightwell registry as their primary index/repository, which only hosts a
-subset of packages per ecosystem (currently `PyYAML` and `Jinja2` for
-Python). Renovate treats that primary registry as authoritative for every
-package in the manifest, so any package Lightwell doesn't remediate (e.g.
-`Flask`, `gunicorn`, `Pygments`) gets a 404 and fails lookup, even with a
-fallback registry configured.
+This repo pins its Java dependencies (`apps/java/pom.xml`) against the
+private Lightwell registry as their primary index/repository, which only
+hosts a subset of Maven packages (currently `org.json:json`). Renovate
+treats that primary registry as authoritative for every package in the
+manifest, so any package Lightwell doesn't remediate gets a 404 and fails
+lookup, even with a fallback registry configured.
 
 To keep Renovate scoped to only the packages Lightwell actually remediates,
-disable each manager by default and re-enable it per-package, per-app-type
-with `matchFileNames` + `matchPackageNames`. Renovate applies `packageRules`
-in order and later matching rules override earlier ones, so list each
-manager's disable rule before its enable rule:
+disable the manager by default and re-enable it only for the specific
+packages, with `matchFileNames` + `matchPackageNames`. Renovate applies
+`packageRules` in order and later matching rules override earlier ones, so
+list the manager's disable rule before its enable rule:
 
 ```json
 "packageRules": [
   {
-    "matchManagers": ["pip_requirements"],
+    "matchManagers": ["maven"],
     "enabled": false
-  },
-  {
-    "matchManagers": ["pip_requirements"],
-    "matchFileNames": ["apps/python/**"],
-    "matchDatasources": ["pypi"],
-    "matchPackageNames": ["PyYAML", "Jinja2"],
-    "enabled": true,
-    "registryUrls": [
-      "https://packages.redhat.com/lightwell/python/remediated/simple",
-      "https://pypi.org/simple/"
-    ]
   },
   {
     "matchManagers": ["maven"],
-    "enabled": false
+    "matchFileNames": ["apps/java/**"],
+    "matchDatasources": ["maven"],
+    "matchPackageNames": ["org.json:json"],
+    "enabled": true,
+    "registryUrls": [
+      "https://packages.redhat.com/lightwell/java/remediated",
+      "https://repo.maven.apache.org/maven2/"
+    ]
   }
 ]
 ```
 
 Do not "fix" 404s by adding a catch-all `registryUrls` fallback to the
-public registry for every package -- that reintroduces update PRs (e.g.
-`pytest`, `Flask`) that are out of scope for the Lightwell remediation
-workflow. When adding a new package to the Lightwell registry, add its name
-to `matchPackageNames` in that app type's enable rule rather than relaxing
-the default-disabled rule.
+public registry for every package -- that reintroduces update PRs for
+packages that are out of scope for the Lightwell remediation workflow.
+When adding a new package to the Lightwell registry, add its name to
+`matchPackageNames` in the enable rule rather than relaxing the
+default-disabled rule.
 
-## Adding a new app type
-
-1. Add the new manager to top-level `enabledManagers` (e.g. `"maven"`).
-2. Add a `matchManagers: ["<manager>"], enabled: false` rule to disable it
-   repo-wide by default (same pattern as `pip_requirements` above).
-3. Add a scoped enable rule with `matchFileNames: ["apps/<type>/**"]` and
-   `matchPackageNames` listing only the packages Lightwell remediates for
-   that ecosystem.
-4. `additionalBranchPrefix: "{{parentDir}}-"` (already set at the top level)
-   splits Renovate PRs by the package file's parent directory, so each
-   app type gets independent PRs/branches without extra per-type config.
+`additionalBranchPrefix: "{{parentDir}}-"` (already set at the top level)
+splits Renovate PRs by the package file's parent directory.

@@ -3,39 +3,11 @@
   "extends": ["config:recommended"],
   "timezone": "America/Chicago",
   "schedule": ["before 7am"],
-  "enabledManagers": ["pip_requirements", "maven"],
+  "enabledManagers": ["maven"],
   "labels": ["lightwell-patch", "automated"],
   "prConcurrentLimit": 5,
   "additionalBranchPrefix": "{{parentDir}}-",
   "packageRules": [
-    {
-      "matchManagers": ["pip_requirements"],
-      "enabled": false
-    },
-    {
-      "matchManagers": ["pip_requirements"],
-      "matchFileNames": ["apps/python/**"],
-      "matchDatasources": ["pypi"],
-      "matchPackageNames": ["PyYAML", "Jinja2", "Flask"],
-      "enabled": false,
-      "registryUrls": [
-        "https://packages.redhat.com/lightwell/python/remediated/simple",
-        "https://pypi.org/simple/"
-      ],
-      "groupName": "Lightwell remediated patches",
-      "commitMessagePrefix": "fix(python):",
-      "commitMessageAction": "apply Lightwell remediated patch to",
-      "commitMessageExtra": "{{currentVersion}} -> {{newVersion}}",
-      "reviewers": ["zjleblanc"],
-      "bumpVersions": [
-        {
-          "name": "Bump python app version on dependency update",
-          "filePatterns": ["apps/python/config/app_config.yaml"],
-          "matchStrings": ["version:\\s*\"(?<version>\\d+\\.\\d+\\.\\d+)\""],
-          "bumpType": "patch"
-        }
-      ]
-    },
     {
       "matchManagers": ["maven"],
       "enabled": false

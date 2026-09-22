@@ -1,8 +1,7 @@
 ---
-# Location of the checked-out application source: the apps/<app_type>/
-# directory alongside this repository's playbooks, i.e. the AAP project
-# working directory.
-app_source_dir: "{{ playbook_dir }}/../apps/{{ app_type | default('python') }}"
+# Location of the checked-out application source: apps/java/ alongside
+# this repository's playbooks, i.e. the AAP project working directory.
+app_source_dir: "{{ playbook_dir }}/../apps/java"
 
 # Lightwell Network remediated repository used to authenticate the
 # build-time dependency install. lightwell_username / lightwell_password
@@ -12,7 +11,7 @@ lightwell_registry_host: packages.redhat.com
 
 # Container image coordinates.
 app_image_registry: quay.io/zleblanc
-app_image_name: "lightwell-{{ app_type | default('python') }}-demo"
+app_image_name: lightwell-java-demo
 app_image_tag: "{{ app_git_sha | default('dev') }}"
 app_image_latest_tag: "{{ 'latest' if app_environment == 'prod' else app_environment + '-latest' }}"
 app_image_push: true

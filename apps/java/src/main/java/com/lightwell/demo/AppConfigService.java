@@ -17,8 +17,7 @@ import com.lightwell.demo.model.ServiceInfo;
 import com.lightwell.demo.model.TrackedDependency;
 
 /**
- * Loads config/app_config.yaml via SnakeYAML at startup, mirroring the
- * Python app's PyYAML-based load_config().
+ * Loads config/app_config.yaml via SnakeYAML at startup.
  */
 @Service
 public class AppConfigService {

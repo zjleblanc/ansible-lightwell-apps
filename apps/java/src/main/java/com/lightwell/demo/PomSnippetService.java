@@ -11,8 +11,7 @@ import org.springframework.stereotype.Service;
 /**
  * Reads apps/java/pom.xml (bundled onto the classpath by the Maven
  * resources plugin, see pom.xml's <build><resources>) for display on the
- * dashboard -- the Java equivalent of the Python app's
- * get_requirements_snippet().
+ * dashboard.
  */
 @Service
 public class PomSnippetService {

@@ -16,14 +16,10 @@ stores a static GitHub PAT. Preserve this pattern in any related change:
   template(s) to launch (`run_job_template`) and with which extra vars
   (`app_git_sha`, `github_repo_full_name`, etc.). Do not configure a
   webhook directly on an AAP job template.
-- **One rule pair per app type**: The rulebook has a separate rule per
-  `(event, app_type)` combination, each launching that app type's own job
-  template (e.g. `Lightwell Python // Build & Test`,
-  `Lightwell Java // Build & Test`) with `app_type` set as an extra var.
-  Adding a new app type means copying the existing rule pair for each
-  event, not modifying the shared playbook logic -- path filtering inside
-  `playbooks/deploy.yml` (keyed off `app_type`) is what decides whether
-  that particular launch actually has work to do.
+- **One rule per event**: The rulebook has a separate rule per event
+  (PR build & test, demo reset, deploy prod), each launching the
+  matching job template (`Lightwell // Build & Test`,
+  `Lightwell // Deploy Prod`).
 - **No static GitHub tokens**: Authenticate to GitHub's API using a token
   minted on demand from a GitHub App installation via the
   `GitHub App Installation Access Token Lookup` credential (chained into a
@@ -36,10 +32,11 @@ stores a static GitHub PAT. Preserve this pattern in any related change:
   role's variables (`github_token`, `github_repo_full_name`, `app_git_sha`,
   `github_status_state`, `github_status_description`) intact and tolerant
   of manual (non-EDA) launches by not failing when they're undefined. The
-  status context (`ci/lightwell-{{ app_type }}-{{ app_environment }}`) is
-  scoped per `app_type` so each app's checks are independent in branch
-  protection.
+  status context (`ci/lightwell-java-{{ app_environment }}`) uniquely
+  identifies this app's checks in branch protection.
 - **Keep `docs/aap-setup.md` in sync**: If you change the Event Stream,
   GitHub App, rulebook conditions, or `report_status` role, update
   `docs/aap-setup.md` (and the README's architecture diagram/pipeline
   walkthrough) so the setup guide matches the actual wiring.
+
+Consider these rules if they affect your changes.
