@@ -5,7 +5,7 @@ service:
     A Spring Boot dashboard demonstrating automated Java dependency patching
     sourced from the Red Hat & IBM Lightwell Network, orchestrated end-to-end
     with Renovate and Ansible Automation Platform.
-  version: "1.0.0"
+  version: "1.0.1"
 
 patch_source:
   name: Lightwell Remediated Index
