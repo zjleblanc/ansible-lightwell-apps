@@ -17,13 +17,13 @@
       "matchFileNames": ["apps/python/**"],
       "matchDatasources": ["pypi"],
       "matchPackageNames": ["PyYAML", "Jinja2", "Flask"],
-      "enabled": true,
+      "enabled": false,
       "registryUrls": [
         "https://packages.redhat.com/lightwell/python/remediated/simple",
         "https://pypi.org/simple/"
       ],
       "groupName": "Lightwell remediated patches",
-      "commitMessagePrefix": "fix(deps):",
+      "commitMessagePrefix": "fix(python):",
       "commitMessageAction": "apply Lightwell remediated patch to",
       "commitMessageExtra": "{{currentVersion}} -> {{newVersion}}",
       "reviewers": ["zjleblanc"]
@@ -43,7 +43,7 @@
         "https://repo.maven.apache.org/maven2/"
       ],
       "groupName": "Lightwell remediated patches",
-      "commitMessagePrefix": "fix(deps):",
+      "commitMessagePrefix": "fix(java):",
       "commitMessageAction": "apply Lightwell remediated patch to",
       "commitMessageExtra": "{{currentVersion}} -> {{newVersion}}",
       "reviewers": ["zjleblanc"]
