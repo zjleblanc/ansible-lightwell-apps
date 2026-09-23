@@ -52,7 +52,7 @@ flowchart TD
         HealthTest -->|"Fail"| FailPR["Update PR Check: Fail"]
     end
 
-    ApprovePR -.- DevToProd["⚠️ Code Promotion"]
+    ApprovePR -.- DevToProd["‼️ Code Promotion"]
     DevToProd -.-> MergeMain["🧑 Merge to main"]
 
     subgraph ProdStage [" "]
