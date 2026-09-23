@@ -31,27 +31,27 @@ This repository hosts a single demo application, a Java service under
 
 ```mermaid
 flowchart TD
-    RenovateBot["Renovate Bot"] -->|"Scans the app's manifest against\nits Lightwell Remediated index"| DetectPatch["Detects new .rhlw patch"]
+    RenovateBot["Renovate Bot"] -->|"Cross-checks app manifest against\n Lightwell Remediated index"| DetectPatch["Detects new .rhlw patch"]
     DetectPatch -->|"Creates PR"| GitHubPR["GitHub Pull Request"]
-    GitHubPR -->|"Webhook (pull_request event)"| EventStream["EDA Event Stream\n(GitHub Event Stream credential)"]
-    EventStream --> Rulebook["Rulebook Activation\nrulebooks/lightwell_webhook.yml"]
-    Rulebook -->|"run_job_template"| AAP_Test["AAP Job Template:\nLightwell // Build & Test"]
-    AAP_Test --> UnifiedDeploy["Unified Playbook:\nplaybooks/deploy.yml"]
-    UnifiedDeploy --> PathFilter{"apps/java/ files\nchanged?"}
+    GitHubPR -->|"Webhook (pull_request event)"| EventStreamPR["GitHub Event Stream"]
+    EventStreamPR --> RulebookPR["Rulebook Activation\nrulebooks/lightwell_webhook.yml"]
+    RulebookPR -->|"run_job_template"| DeployDevPlaybook["AAP Job Template:\nLightwell // Build & Test\nplaybooks/deploy.yml"]
+    DeployDevPlaybook --> PathFilter{"app files changed?"}
     PathFilter -->|"No"| Skip["Skip: post success status"]
     PathFilter -->|"Yes"| BuildImg["Build Container Image\n(Podman)"]
     BuildImg --> DeployTest["Deploy to Dev\n(Podman on RHEL)"]
     DeployTest --> HealthTest["Health Check\n(Dev Environment)"]
-    HealthTest -->|"Pass"| ApprovePR["report_status role posts to PR:\nChecks Pass (GitHub App token)"]
-    HealthTest -->|"Fail"| FailPR["report_status role posts to PR:\nChecks Fail (GitHub App token)"]
-    ApprovePR -->|"Reviewer approves & merges"| MergeMain["Merge to main"]
-    MergeMain -->|"Webhook (push event)"| EventStream
-    Rulebook -->|"run_job_template"| AAP_Prod["AAP Job Template:\nLightwell // Deploy Prod"]
-    AAP_Prod --> UnifiedDeploy
-    UnifiedDeploy --> DeployProd["Deploy to Prod\n(Podman on RHEL)"]
-    DeployProd --> HealthProd["Health Check\n(Prod Environment)"]
+    HealthTest -->|"Pass"| ApprovePR["Update PR Check: Pass"]
+    HealthTest -->|"Fail"| FailPR["Update PR Check: Fail"]
+    ApprovePR -->|"Human Approval"| MergeMain["Merge to main"]
+    MergeMain -->|"Webhook (push event)"| EventStreamPush["GitHub Event Stream"]
+    EventStreamPush --> RulebookPush["Rulebook Activation\nrulebooks/lightwell_webhook.yml"]
+    RulebookPush -->|"run_job_template"| DeployProdPlaybook["AAP Job Template:\nLightwell // Deploy Prod\nplaybooks/deploy.yml"]
+    DeployProdPlaybook --> BuildImgProd["Rebuild Container Image\nfrom merge commit (Podman)"]
+    BuildImgProd --> DeployProd["Deploy to Prod"]
+    DeployProd --> HealthProd["Health Check"]
     HealthProd -->|"Pass"| Done["Deployment Complete"]
-    HealthProd -->|"Fail"| Rollback["Automatic Rollback to\nPrevious Version"]
+    HealthProd -->|"Fail"| Rollback["Automated Rollback"]
 ```
 
 ## Repository layout
