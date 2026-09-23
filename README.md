@@ -34,30 +34,42 @@ This repository hosts a single demo application, a Java service under
 flowchart TD
     classDef dev fill:#9ad8d8,stroke:#37a3a3,color:#004d4d
     classDef prod fill:#b6a6e9,stroke:#5e40be,color:#21134d
+    classDef action fill:#92c5f9,stroke:#0066cc,color:#003366
 
-    DetectPatch["🤖 Renovate Bot\ndetects new .rhlw patch"] -->GitHubPR["GitHub Pull Request"]
-    GitHubPR -->|"Native webhook\npull_request event"| EventStreamPR["GitHub Event Stream"]
-    EventStreamPR --> RulebookPR["Rulebook Activation\nrulebooks/lightwell_webhook.yml"]
-    RulebookPR --> DeployDevPlaybook["AAP Job Template:\nLightwell // Build & Test\nplaybooks/deploy.yml"]
-    DeployDevPlaybook --> PathFilter{"app files changed?"}
-    PathFilter -->|"No"| Skip["Post Success\n(no-op)"]
-    PathFilter -->|"Yes"| BuildImg["Build Container Image\n(Podman)"]
-    BuildImg --> DeployTest["Deploy to Dev\n(Podman on RHEL)"]
-    DeployTest --> HealthTest["Health Check\n(Dev Environment)"]
-    HealthTest -->|"Pass"| ApprovePR["Update PR Check: Pass"]
-    HealthTest -->|"Fail"| FailPR["Update PR Check: Fail"]
-    ApprovePR --> MergeMain["🧑 Merge to main"]
-    MergeMain -->|"Native webhook\npush event"| EventStreamPush["GitHub Event Stream"]
-    EventStreamPush --> RulebookPush["Rulebook Activation\nrulebooks/lightwell_webhook.yml"]
-    RulebookPush --> DeployProdPlaybook["AAP Job Template:\nLightwell // Deploy Prod\nplaybooks/deploy.yml"]
-    DeployProdPlaybook --> BuildImgProd["Rebuild Container Image\nfrom merge commit (Podman)"]
-    BuildImgProd --> DeployProd["Deploy to Prod"]
-    DeployProd --> HealthProd["Health Check"]
-    HealthProd -->|"Pass"| Done["Deployment Complete"]
-    HealthProd -->|"Fail"| Rollback["Automated Rollback"]
+    DetectPatch["🤖 Renovate Bot\ndetects new .rhlw patch"] --> GitHubPR
+
+    subgraph DevStage [" "]
+        GitHubPR["GitHub Pull Request"]
+        GitHubPR -->|"Native webhook\npull_request event"| EventStreamPR["GitHub Event Stream"]
+        EventStreamPR --> RulebookPR["Rulebook Activation\nrulebooks/lightwell_webhook.yml"]
+        RulebookPR --> DeployDevPlaybook["AAP Job Template:\nLightwell // Build & Test\nplaybooks/deploy.yml"]
+        DeployDevPlaybook --> PathFilter{"app files changed?"}
+        PathFilter -->|"No"| Skip["Post Success\n(no-op)"]
+        PathFilter -->|"Yes"| BuildImg["Build Container Image\n(Podman)"]
+        BuildImg --> DeployTest["Deploy to Dev\n(Podman on RHEL)"]
+        DeployTest --> HealthTest["Health Check\n(Dev Environment)"]
+        HealthTest -->|"Pass"| ApprovePR["Update PR Check: Pass"]
+        HealthTest -->|"Fail"| FailPR["Update PR Check: Fail"]
+    end
+
+    subgraph ProdStage [" "]
+        ApprovePR --> MergeMain["🧑 Merge to main"]
+        MergeMain -->|"Native webhook\npush event"| EventStreamPush["GitHub Event Stream"]
+        EventStreamPush --> RulebookPush["Rulebook Activation\nrulebooks/lightwell_webhook.yml"]
+        RulebookPush --> DeployProdPlaybook["AAP Job Template:\nLightwell // Deploy Prod\nplaybooks/deploy.yml"]
+        DeployProdPlaybook --> BuildImgProd["Rebuild Container Image\nfrom merge commit (Podman)"]
+        BuildImgProd --> DeployProd["Deploy to Prod"]
+        DeployProd --> HealthProd["Health Check"]
+        HealthProd -->|"Pass"| Done["Deployment Complete"]
+        HealthProd -->|"Fail"| Rollback["Automated Rollback"]
+    end
+
+    style DevStage fill:none,stroke:#37a3a3,stroke-dasharray:5 5,stroke-width:2px
+    style ProdStage fill:none,stroke:#5e40be,stroke-dasharray:5 5,stroke-width:2px
 
     class EventStreamPR,RulebookPR,DeployDevPlaybook,PathFilter,Skip,BuildImg,DeployTest,HealthTest,ApprovePR,FailPR dev
     class EventStreamPush,RulebookPush,DeployProdPlaybook,BuildImgProd,DeployProd,HealthProd,Done,Rollback prod
+    class GitHubPR,MergeMain action
 ```
 
 ## Repository layout
