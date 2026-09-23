@@ -30,11 +30,11 @@ This repository hosts a single demo application, a Java service under
 ## Architecture
 
 ```mermaid
-%%{init: {'flowchart': {'padding': 10}}}%%
 flowchart TD
     classDef dev fill:#9ad8d8,stroke:#37a3a3,color:#004d4d
     classDef prod fill:#b6a6e9,stroke:#5e40be,color:#21134d
     classDef action fill:#92c5f9,stroke:#0066cc,color:#003366
+    classDef transition fill:none,stroke:#fff4cc,stroke-dasharray: 1 3
 
     DetectPatch["🤖 Renovate Bot\ndetects new .rhlw patch"] --> GitHubPR
 
@@ -52,8 +52,10 @@ flowchart TD
         HealthTest -->|"Fail"| FailPR["Update PR Check: Fail"]
     end
 
+    ApprovePR -.- DevToProd["⚠️ Code Promotion"]
+    DevToProd -.-> MergeMain["🧑 Merge to main"]
+
     subgraph ProdStage [" "]
-        ApprovePR --> MergeMain["🧑 Merge to main"]
         MergeMain -->|"Native webhook\npush event"| EventStreamPush["GitHub Event Stream"]
         EventStreamPush --> RulebookPush["Rulebook Activation\nrulebooks/lightwell_webhook.yml"]
         RulebookPush --> DeployProdPlaybook["AAP Job Template:\nLightwell // Deploy Prod\nplaybooks/deploy.yml"]
@@ -70,6 +72,7 @@ flowchart TD
     class EventStreamPR,RulebookPR,DeployDevPlaybook,PathFilter,Skip,BuildImg,DeployTest,HealthTest,ApprovePR,FailPR dev
     class EventStreamPush,RulebookPush,DeployProdPlaybook,BuildImgProd,DeployProd,HealthProd,Done,Rollback prod
     class GitHubPR,MergeMain action
+    class DevToProd transition
 ```
 
 ## Repository layout
